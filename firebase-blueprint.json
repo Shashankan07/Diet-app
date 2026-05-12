@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and health profile.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "age": { "type": "number" },
+        "weight": { "type": "number" },
+        "height": { "type": "number" },
+        "gender": { "type": "string" },
+        "goal": { "type": "string" },
+        "activityLevel": { "type": "string" },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "subscriptionStatus": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "MealLog": {
+      "title": "Meal Log",
+      "description": "Historical record of food consumption.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "foodName": { "type": "string" },
+        "calories": { "type": "number" },
+        "protein": { "type": "number" },
+        "carbs": { "type": "number" },
+        "fat": { "type": "number" },
+        "fiber": { "type": "number" },
+        "sugar": { "type": "number" },
+        "sodium": { "type": "number" },
+        "calcium": { "type": "number" },
+        "iron": { "type": "number" },
+        "potassium": { "type": "number" },
+        "mealType": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "manual": { "type": "boolean" },
+        "aiGenerated": { "type": "boolean" },
+        "servingSize": { "type": "string" },
+        "quantity": { "type": "number" },
+        "cuisine": { "type": "string" }
+      },
+      "required": ["userId", "foodName", "calories", "timestamp"]
+    },
+    "WaterLog": {
+      "title": "Water Log",
+      "description": "Record of water intake throughout the day.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amountMl": { "type": "number" },
+        "loggedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amountMl", "loggedAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles indexed by their Firebase Auth UID."
+    },
+    "mealLogs/{logId}": {
+      "schema": "MealLog",
+      "description": "Log entries for meals consumed by users."
+    },
+    "waterLogs/{logId}": {
+      "schema": "WaterLog",
+      "description": "Log entries for water intake."
+    }
+  }
+}

@@ -1,0 +1,108 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      // Mandate email verification for write operations for extra security
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+
+);
+    }
+
+    // --- Entity Validations ---
+
+    function isValidUser(data) {
+      let requiredFields = ['uid', 'email'];
+      return data.keys().hasAll(requiredFields)
+        && data.uid == request.auth.uid
+        && data.email is string && data.email.size() <= 256
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128))
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 512))
+        && (!('age' in data) || (data.age is number && data.age >= 0 && data.age <= 150))
+        && (!('weight' in data) || (data.weight is number && data.weight >= 0 && data.weight <= 500))
+        && (!('height' in data) || (data.height is number && data.height >= 0 && data.height <= 300))
+        && (!('gender' in data) || (data.gender is string && data.gender.size() <= 20))
+        && (!('goal' in data) || (data.goal is string && data.goal.size() <= 50))
+        && (!('activityLevel' in data) || (data.activityLevel is string && data.activityLevel.size() <= 64))
+        && (!('subscriptionStatus' in data) || (data.subscriptionStatus is string && data.subscriptionStatus.size() <= 50))
+        && (!('lastLogin' in data) || (data.lastLogin == request.time || data.lastLogin is timestamp))
+        && (!('updatedAt' in data) || (data.updatedAt == request.time || data.updatedAt is timestamp));
+    }
+
+    function isValidMealLog(data) {
+      let requiredFields = ['userId', 'foodName', 'calories', 'timestamp'];
+      return data.keys().hasAll(requiredFields)
+        && data.userId == request.auth.uid
+        && data.foodName is string && data.foodName.size() <= 256
+        && data.calories is number && data.calories >= 0 && data.calories <= 10000
+        && (data.timestamp == request.time || data.timestamp is timestamp)
+        && (!('protein' in data) || (data.protein is number && data.protein >= 0))
+        && (!('carbs' in data) || (data.carbs is number && data.carbs >= 0))
+        && (!('fat' in data) || (data.fat is number && data.fat >= 0))
+        && (!('mealType' in data) || (data.mealType is string && data.mealType.size() <= 50))
+        && (!('manual' in data) || (data.manual is bool));
+    }
+
+    function isValidWaterLog(data) {
+      let requiredFields = ['userId', 'amountMl', 'loggedAt'];
+      return data.keys().hasAll(requiredFields)
+        && data.userId == request.auth.uid
+        && data.amountMl is number && data.amountMl >= -5000 && data.amountMl <= 5000
+        && (data.loggedAt == request.time || data.loggedAt is timestamp);
+    }
+
+    // --- Collection Matches ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'photoURL', 'age', 'weight', 'height', 
+          'gender', 'goal', 'activityLevel', 'lastLogin', 'updatedAt', 'subscriptionStatus'
+        ]);
+    }
+
+    match /mealLogs/{logId} {
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && isValidMealLog(incoming());
+      allow update: if false; 
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /waterLogs/{logId} {
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && isValidWaterLog(incoming());
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
+
